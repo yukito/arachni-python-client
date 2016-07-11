@@ -2,7 +2,7 @@ import urllib
 import urllib2
 import json
 
-class ArachniClient():
+class ArachniClient(object):
 
    default_options = {
                        "url" : None,
@@ -77,21 +77,63 @@ class ArachniClient():
       request = urllib2.Request(self.arachni_url + api_path, options)
       request.add_header('Content-Type', 'application/json')
       return urllib2.urlopen(request).read()
+
+   def put_request(self, api_path):
+      request = urllib2.Request(self.arachni_url + api_path)
+      request.get_method = lambda: 'PUT'
+      return urllib2.urlopen(request).read()
+
+   def delete_request(self, api_path):
+      request = urllib2.Request(self.arachni_url + api_path)
+      request.get_method = lambda: 'DELETE'
+      return urllib2.urlopen(request).read()
       
    def get_scans(self):
-      return self.get_http_request('/scans')
+      return json.loads(self.get_http_request('/scans'))
+
+   def get_status(self, scan_id):
+      return json.loads(self.get_http_request('/scans/' + scan_id))
+
+   def pause_scan(self, scan_id):
+      return self.put_request('/scans/' + scan_id + '/pause')
+
+   def resume_scan(self, scan_id):
+      return self.put_request('/scans/' + scan_id + '/resume')
+
+   def get_report(self, scan_id, report_format = None):
+      if self.get_status(scan_id)['status'] == 'done':
+
+         if report_format == 'html':
+            report_format = 'html.zip'
+
+         if report_format in ['json', 'xml', 'yaml', 'html.zip']:
+            return self.get_http_request('/scans/' + scan_id + '/report.' + report_format)
+         elif report_format == None:
+            return self.get_http_request('/scans/' + scan_id + '/report')
+         else:
+            print 'your requested format is not available.'
+
+      else:
+         print 'your requested scan is in progress.'
+
+   def delete_scan(self, scan_id):
+      return self.delete_request('/scans/' + scan_id)
 
    def start_scan(self):
       if ArachniClient.default_options['url']:
-         return self.post_api('/scans')
+         return json.loads(self.post_api('/scans'))
       else:
-         print('Target is not set!')
+         print 'Target is not set!'
 
    def target(self, target_url):
+      try:
+         urllib2.urlopen(target_url)
+      except HTTPError, e:
+         print e.code
+         return
       ArachniClient.default_options['url'] = target_url
 
 if __name__ == '__main__':
    a = ArachniClient()
-   print a.get_scans()
    a.target('http://127.0.0.1:8080')
    print a.start_scan()
