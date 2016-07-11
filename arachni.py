@@ -79,5 +79,6 @@ class ArachniClient(object):
 
 if __name__ == '__main__':
    a = ArachniClient()
+   a.profile('./profiles/xss.json')
    a.target('http://127.0.0.1:8080')
    print a.start_scan()
